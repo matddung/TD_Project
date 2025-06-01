@@ -25,9 +25,6 @@ Thumbs.db
 
 Content/*
 
-!Content/Maps/
-!Content/Maps/**
-
 !Content/Blueprints/
 !Content/Blueprints/**
 
