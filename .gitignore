@@ -24,3 +24,21 @@ Thumbs.db
 *.app
 
 Content/*
+
+!Content/Maps/
+!Content/Maps/**
+
+!Content/Blueprints/
+!Content/Blueprints/**
+
+!Content/Data/
+!Content/Data/**
+
+!Content/UI/
+!Content/UI/**
+
+!Content/AI/
+!Content/AI/**
+
+!Content/Assets/
+!Content/Assets/**
