@@ -39,3 +39,6 @@ Content/*
 
 !Content/Assets/
 !Content/Assets/**
+
+!Content/Maps/
+!Content/Maps/**
