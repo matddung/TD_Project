@@ -58,8 +58,17 @@ public:
 
     void DrawGrid();
 
-    void DrawSelectedCell();
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Settings")
+    TSubclassOf<class AWall> WallClass;
 
-    UFUNCTION(BlueprintCallable, Category = "Grid Visualization")
-    void UpdateSelectedCell(const FVector& WorldLocation);
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Settings")
+    int32 WallLength = 1;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Grid Settings")
+    bool bPlacementHorizontal = true;
+
+    UFUNCTION(BlueprintCallable, Category = "Grid Functions")
+    bool TryPlaceWallAtLocation(const FVector& WorldLocation);
+
+    bool PlaceWallAtGrid(int32 GridX, int32 GridY);
 };

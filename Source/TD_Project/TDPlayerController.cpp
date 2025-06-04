@@ -42,11 +42,6 @@ void ATDPlayerController::BeginPlay()
     if (FixedCameraActor)
     {
         SetViewTarget(FixedCameraActor);
-        UE_LOG(LogTemp, Warning, TEXT("SetViewTarget"));
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("TDPlayerController: GridManager not found"));
     }
 }
 
@@ -55,13 +50,6 @@ void ATDPlayerController::SetupInputComponent()
     Super::SetupInputComponent();
 
     InputComponent->BindAction("LeftClick", IE_Pressed, this, &ATDPlayerController::OnLeftMouseClick);
-
-    TArray<AActor*> Found;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AGridManager::StaticClass(), Found);
-    if (Found.Num() > 0)
-    {
-        GridManagerRef = Cast<AGridManager>(Found[0]);
-    }
 }
 
 void ATDPlayerController::OnLeftMouseClick()
@@ -70,12 +58,25 @@ void ATDPlayerController::OnLeftMouseClick()
 
     FHitResult Hit;
     ETraceTypeQuery TraceQuery = UEngineTypes::ConvertToTraceType(ECC_Visibility);
-
     bool bHit = GetHitResultUnderCursorByChannel(TraceQuery, false, Hit);
 
     if (bHit && Hit.bBlockingHit)
     {
-        FVector HitLocation = Hit.Location;
-        GridManagerRef->UpdateSelectedCell(HitLocation);
+        FVector HitLocation = Hit.ImpactPoint;
+
+        bool bSuccess = GridManagerRef->TryPlaceWallAtLocation(HitLocation);
+
+        if (bSuccess)
+        {
+            GEngine->AddOnScreenDebugMessage(
+                -1, 1.5f, FColor::Green,
+                TEXT("Wall placed successfully."));
+        }
+        else
+        {
+            GEngine->AddOnScreenDebugMessage(
+                -1, 1.5f, FColor::Red,
+                TEXT("Cannot place wall here."));
+        }
     }
 }

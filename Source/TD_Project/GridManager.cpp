@@ -1,25 +1,27 @@
 #include "GridManager.h"
-#include "Engine/EngineTypes.h" 
+#include "Wall.h"
+
+#include "Engine/EngineTypes.h"
+#include "DrawDebugHelpers.h"
 
 AGridManager::AGridManager()
 {
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 
 }
 
 void AGridManager::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	InitializeGrid();
+    InitializeGrid();
 }
 
 void AGridManager::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
     DrawGrid();
-    DrawSelectedCell();
 }
 
 void AGridManager::InitializeGrid()
@@ -62,41 +64,18 @@ FVector AGridManager::GridToWorld(int32 GridX, int32 GridY) const
     return FVector(WorldX, WorldY, WorldZ);
 }
 
-void AGridManager::UpdateSelectedCell(const FVector& WorldLocation)
-{
-    FIntPoint HitIdx = WorldToGrid(WorldLocation);
-    if (IsValidGridIndex(HitIdx.X, HitIdx.Y))
-    {
-        SelectedCell = HitIdx;
-    }
-    else
-    {
-        SelectedCell = FIntPoint(-1, -1);
-    }
-}
-
 void AGridManager::DrawGrid()
 {
     if (!GetWorld()) return;
 
-    const float Z = GridOrigin.Z + 1.0f;
-    const FVector Color = FVector(1.0f, 1.0f, 1.0f);
+    const float Z = GridOrigin.Z + 10.0f;
 
     for (int32 Col = 0; Col <= NumColumns; ++Col)
     {
         float X = GridOrigin.X + (Col * CellSize);
         FVector Start = FVector(X, GridOrigin.Y, Z);
         FVector End = FVector(X, GridOrigin.Y + NumRows * CellSize, Z);
-        DrawDebugLine(
-            GetWorld(),
-            Start,
-            End,
-            FColor::White,
-            false,
-            -1.0f,
-            0,
-            2.0f
-        );
+        DrawDebugLine(GetWorld(), Start, End, FColor::Black, false, -1.f, 0, 2.f);
     }
 
     for (int32 Row = 0; Row <= NumRows; ++Row)
@@ -104,36 +83,68 @@ void AGridManager::DrawGrid()
         float Y = GridOrigin.Y + (Row * CellSize);
         FVector Start = FVector(GridOrigin.X, Y, Z);
         FVector End = FVector(GridOrigin.X + NumColumns * CellSize, Y, Z);
-        DrawDebugLine(
-            GetWorld(),
-            Start,
-            End,
-            FColor::White,
-            false,
-            -1.0f,
-            0,
-            2.0f
-        );
+        DrawDebugLine(GetWorld(), Start, End, FColor::Black, false, -1.f, 0, 2.f);
     }
 }
 
-void AGridManager::DrawSelectedCell()
+bool AGridManager::TryPlaceWallAtLocation(const FVector& WorldLocation)
 {
-    if (!GetWorld()) return;
+    FIntPoint GridIdx = WorldToGrid(WorldLocation);
 
-    if (!IsValidGridIndex(SelectedCell.X, SelectedCell.Y))
+    if (GridIdx.X < 0 || GridIdx.Y < 0)
     {
-        return;
+        return false;
     }
 
-    FVector CellCenter = GridToWorld(SelectedCell.X, SelectedCell.Y);
+    return PlaceWallAtGrid(GridIdx.X, GridIdx.Y);
+}
 
-    FVector BoxExtent = FVector(CellSize * 0.5f, CellSize * 0.5f, 5.0f);
+bool AGridManager::PlaceWallAtGrid(int32 GridX, int32 GridY)
+{
+    if (!IsValidGridIndex(GridX, GridY)) return false;
 
-    DrawDebugSolidBox(
-        GetWorld(),
-        CellCenter,
-        BoxExtent,
-        FColor(0, 255, 0, 100)
-    );
+    int32 FirstIndex = GridY * NumColumns + GridX;
+    if (GridOccupied[FirstIndex]) return false;
+
+    for (int32 Offset = 1; Offset < WallLength; Offset++)
+    {
+        int32 CheckX = GridX + Offset;
+        int32 CheckY = GridY;
+
+        if (!IsValidGridIndex(CheckX, CheckY)) return false;
+
+        int32 CheckIndex = CheckY * NumColumns + CheckX;
+        if (GridOccupied[CheckIndex]) return false;
+    }
+
+    if (!WallClass) return false;
+
+    int32 CenterX = GridX;
+    int32 CenterY = GridY;
+    FVector CenterLocation = GridToWorld(CenterX, CenterY);
+
+    CenterLocation.Z = 200;
+
+    FActorSpawnParameters Params;
+    Params.Owner = this;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AWall* NewWall = GetWorld()->SpawnActor<AWall>(WallClass, CenterLocation, FRotator::ZeroRotator, Params);
+    if (!NewWall) return false;
+
+    NewWall->SetGridIndex(GridX, GridY);
+    NewWall->WallLength = WallLength;
+    NewWall->bIsHorizontal = true;
+
+    for (int32 Offset = 0; Offset < WallLength; ++Offset)
+    {
+        int32 OccupyX = GridX + Offset;
+        int32 OccupyY = GridY;
+        int32 Index = OccupyY * NumColumns + OccupyX;
+
+        GridOccupied[Index] = true;
+        GridWallActors[Index] = NewWall;
+    }
+
+    return true;
 }
